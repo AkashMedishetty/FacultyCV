@@ -1,5 +1,4 @@
-// @ts-expect-error - pdf-parse types
-import pdfParse from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 import mammoth from "mammoth";
 import { db } from "./db";
 import { cvContent } from "@/drizzle/schema";
@@ -17,8 +16,13 @@ const sectionPatterns: Record<string, RegExp> = {
 };
 
 export async function parsePDF(buffer: Buffer): Promise<string> {
-  const data = await pdfParse(buffer);
-  return data.text;
+  const parser = new PDFParse({ data: new Uint8Array(buffer) });
+  try {
+    const result = await parser.getText();
+    return result.text;
+  } finally {
+    await parser.destroy();
+  }
 }
 
 export async function parseDOCX(buffer: Buffer): Promise<string> {

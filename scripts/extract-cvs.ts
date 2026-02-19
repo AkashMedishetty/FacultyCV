@@ -7,11 +7,12 @@ import * as fs from "fs";
 import * as path from "path";
 
 // Dynamic imports for parsers
-let pdfParse: any;
+let PDFParseClass: any;
 let mammoth: any;
 
 async function loadParsers() {
-  pdfParse = await import("pdf-parse");
+  const pdfMod = await import("pdf-parse");
+  PDFParseClass = pdfMod.PDFParse;
   mammoth = await import("mammoth");
 }
 
@@ -133,8 +134,13 @@ async function extractAndUpload() {
         // Parse document
         let rawText = "";
         if (ext === "pdf") {
-          const data = await pdfParse(buffer);
-          rawText = data.text;
+          const parser = new PDFParseClass({ data: new Uint8Array(buffer) });
+          try {
+            const result = await parser.getText();
+            rawText = result.text;
+          } finally {
+            await parser.destroy();
+          }
         } else {
           const result = await mammoth.extractRawText({ buffer });
           rawText = result.value;

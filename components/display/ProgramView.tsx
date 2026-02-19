@@ -16,7 +16,7 @@ export function ProgramView({ day, sessions }: ProgramViewProps) {
   ];
   const dayDates = ["", "Friday, Feb 20", "Saturday, Feb 21", "Sunday, Feb 22"];
 
-  const halls = [...new Set(sessions.map((s) => s.hall).filter(Boolean))];
+  const halls = Array.from(new Set(sessions.map((s) => s.hall).filter(Boolean)));
 
   return (
     <div className="min-h-screen brand-gradient p-6 animate-fade-in">

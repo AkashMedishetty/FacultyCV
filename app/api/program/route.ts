@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { programSessions } from "@/drizzle/schema";
 import { asc } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const allSessions = await db
     .select()
