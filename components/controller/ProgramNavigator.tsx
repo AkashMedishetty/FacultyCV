@@ -1,7 +1,17 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
-import { ProgramSession, Doctor } from "@/lib/types";
+import { ProgramSession } from "@/lib/types";
 import { Button } from "../shared/Button";
+
+interface Speaker {
+  id: string | null;
+  name?: string;
+  speakerLabel: string;
+  profilePhotoUrl?: string | null;
+  institution?: string | null;
+  qualification?: string | null;
+  designation?: string | null;
+}
 
 interface ProgramNavigatorProps {
   onDisplayProgram: (day: number) => void;
@@ -18,7 +28,7 @@ export function ProgramNavigator({
   const [selectedDay, setSelectedDay] = useState(1);
   const [selectedHall, setSelectedHall] = useState<string | null>(null);
   const [selectedSession, setSelectedSession] = useState<ProgramSession | null>(null);
-  const [sessionSpeakers, setSessionSpeakers] = useState<any[]>([]);
+  const [sessionSpeakers, setSessionSpeakers] = useState<Speaker[]>([]);
   const [currentSpeakerIdx, setCurrentSpeakerIdx] = useState(0);
   const [loading, setLoading] = useState(true);
 

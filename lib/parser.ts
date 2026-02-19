@@ -1,4 +1,4 @@
-// @ts-ignore - pdf-parse types
+// @ts-expect-error - pdf-parse types
 import pdfParse from "pdf-parse";
 import mammoth from "mammoth";
 import { db } from "./db";
@@ -59,7 +59,6 @@ export function detectSections(text: string): {
     if (!trimmed) continue;
 
     // Check if this line is a section header
-    let matched = false;
     for (const [section, pattern] of Object.entries(sectionPatterns)) {
       if (
         pattern.test(trimmed) &&
@@ -69,7 +68,6 @@ export function detectSections(text: string): {
           trimmed.length < 50)
       ) {
         currentSection = section;
-        matched = true;
         break;
       }
     }

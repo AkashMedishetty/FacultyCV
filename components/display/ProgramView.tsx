@@ -68,7 +68,6 @@ export function ProgramView({ day, sessions }: ProgramViewProps) {
 }
 
 function SessionCard({ session }: { session: ProgramSession }) {
-  const now = new Date();
   const isCurrentTime = false; // Could implement time-based highlighting
 
   return (

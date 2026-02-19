@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { programSessions, doctors } from "@/drizzle/schema";
-import { eq, ilike } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 export async function GET(
   request: Request,
