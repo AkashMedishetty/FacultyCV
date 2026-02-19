@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { doctors } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
-import { put } from "@vercel/blob";
+import { put, del } from "@vercel/blob";
 
 export async function POST(
   request: Request,
@@ -24,7 +24,17 @@ export async function POST(
     );
   }
 
-  const blob = await put(`photos/${id}/${file.name}`, file, {
+  // Delete old photo blob if exists
+  const [existing] = await db.select().from(doctors).where(eq(doctors.id, id));
+  if (existing?.profilePhotoUrl) {
+    try {
+      await del(existing.profilePhotoUrl);
+    } catch {
+      // Old blob may not exist, ignore
+    }
+  }
+
+  const blob = await put(`photos/${id}/${Date.now()}-${file.name}`, file, {
     access: "public",
   });
 
