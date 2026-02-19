@@ -31,83 +31,55 @@ async function seedProgram() {
     const { day, hall } = detectDayAndHall(page);
     if (day === 0) continue;
 
-    const lines = page.split("\n").filter((l) => l.trim());
+    // The PDF text is all on one line per page, separated by multiple spaces.
+    // Split on time patterns like "8:00 Am", "10:30 pm", etc.
+    const timePattern = /(\d{1,2}:\d{2}\s*(?:am|pm))/gi;
+    const pageText = page.replace(/\s+/g, " ").trim();
+
+    // Find all time positions
+    const timeMatches: { time: string; index: number }[] = [];
+    let match;
+    while ((match = timePattern.exec(pageText)) !== null) {
+      timeMatches.push({ time: match[1].trim(), index: match.index });
+    }
 
     let currentModerator: string | null = null;
     let currentChairperson: string | null = null;
 
-    for (const line of lines) {
-      const trimmed = line.trim();
+    for (let i = 0; i < timeMatches.length; i++) {
+      const startIdx = timeMatches[i].index + timeMatches[i].time.length;
+      const endIdx = i + 1 < timeMatches.length ? timeMatches[i + 1].index : pageText.length;
+      const segment = pageText.substring(startIdx, endIdx).trim();
+      const timeSlot = normalizeTime(timeMatches[i].time);
 
-      // Skip page headers/footers
-      if (isPageHeader(trimmed)) continue;
+      // Skip footer lines
+      if (!segment || isFooter(segment)) continue;
 
-      // Detect moderator
-      const modMatch = trimmed.match(/Moderator\s*:\s*(.+)/i);
-      if (modMatch) {
-        currentModerator = modMatch[1].trim();
-        continue;
-      }
+      // Check for moderator/chairperson in segment
+      const modMatch = segment.match(/Moderator\s*:\s*(Dr\.[^,]+(?:,\s*\w+)?)/i);
+      if (modMatch) currentModerator = modMatch[1].trim();
+      const chairMatch = segment.match(/Chai(?:r)?person\s*:\s*(Dr\.[^,]+(?:,\s*\w+)?)/i);
+      if (chairMatch) currentChairperson = chairMatch[1].trim();
 
-      // Detect chairperson
-      const chairMatch = trimmed.match(/Chai(?:r)?person\s*:\s*(.+)/i);
-      if (chairMatch) {
-        currentChairperson = chairMatch[1].trim();
-        continue;
-      }
+      // Split segment into title and speaker using double-space separator
+      const { title, speaker } = splitTitleAndSpeaker(segment);
+      if (!title || title.length < 3) continue;
 
-      // Parse time-based entries
-      const timeMatch = trimmed.match(
-        /^(\d{1,2}:\d{2}\s*(?:am|pm|Am|Pm|AM|PM))\s+(.+)/i
-      );
-      if (timeMatch) {
-        const timeSlot = normalizeTime(timeMatch[1]);
-        const rest = timeMatch[2].trim();
+      // Skip if it's just a session header with moderator info
+      if (/^(Moderator|Chairperson|Chaiperson)\s*:/i.test(title)) continue;
 
-        // Split into title and speaker
-        const { title, speaker } = splitTitleAndSpeaker(rest);
-
-        if (title) {
-          sortOrder++;
-          const sessionType = detectSessionType(title, trimmed);
-
-          entries.push({
-            dayNumber: day,
-            timeSlot,
-            hall: hall || "Hall A",
-            title,
-            speakers: speaker || "",
-            sessionType,
-            moderator: currentModerator,
-            chairperson: currentChairperson,
-            sortOrder,
-          });
-        }
-        continue;
-      }
-
-      // Session header lines (no time prefix but describe a session block)
-      const sessionHeaderMatch = trimmed.match(
-        /^([A-Z][A-Za-z\s&:,\-]+(?:Session|Section|Oration|Papers|Quiz|Workshop|Forum))/i
-      );
-      if (
-        sessionHeaderMatch &&
-        !trimmed.match(/^\d/) &&
-        trimmed.length < 120
-      ) {
-        sortOrder++;
-        entries.push({
-          dayNumber: day,
-          timeSlot: "",
-          hall: hall || "Hall A",
-          title: sessionHeaderMatch[1].trim(),
-          speakers: "",
-          sessionType: "header",
-          moderator: currentModerator,
-          chairperson: currentChairperson,
-          sortOrder,
-        });
-      }
+      sortOrder++;
+      entries.push({
+        dayNumber: day,
+        timeSlot,
+        hall: hall || "Hall A",
+        title: cleanTitle(title),
+        speakers: speaker || "",
+        sessionType: detectSessionType(title),
+        moderator: currentModerator,
+        chairperson: currentChairperson,
+        sortOrder,
+      });
     }
   }
 
@@ -139,10 +111,12 @@ function detectDayAndHall(page: string): { day: number; hall: string } {
   let day = 0;
   let hall = "Hall A";
 
-  if (/Day[\s-]*1|20-2-2026|Feb\s*20/i.test(page)) day = 1;
-  else if (/Day[\s-]*2|21-2-2026|Feb\s*21/i.test(page)) day = 2;
+  // Check for day indicators - be more specific to avoid false matches
+  if (/Day[\s-]*1|20-2-2026|Friday/i.test(page)) day = 1;
   else if (/Day[\s-]*3|22-2-2026|Feb\s*22/i.test(page)) day = 3;
+  else if (/Day[\s-]*2|21-2-2026|Saturday/i.test(page)) day = 2;
 
+  // Hall detection - check for the last/most specific hall mention
   if (/Hall\s*C/i.test(page)) hall = "Hall C";
   else if (/Hall\s*B/i.test(page)) hall = "Hall B";
   else if (/Hall\s*A/i.test(page)) hall = "Hall A";
@@ -150,12 +124,11 @@ function detectDayAndHall(page: string): { day: number; hall: string } {
   return { day, hall };
 }
 
-function isPageHeader(line: string): boolean {
+function isFooter(text: string): boolean {
   return (
-    /^(Symposium|Specialty|Practice|Hall [ABC]|Time\s+Session)/i.test(line) ||
-    /^\d+-\d+-\d+/.test(line) ||
-    /^(Saturday|Sunday|Friday)/i.test(line) ||
-    line === "Time   Session and Topics   Speakers"
+    /^(Symposium|Specialty|Practice|Hall [ABC])\s*(Day|Specialty)/i.test(text) ||
+    /^\d+-\d+-\d+/.test(text) ||
+    /^Time\s+Session/i.test(text)
   );
 }
 
@@ -163,23 +136,28 @@ function normalizeTime(time: string): string {
   return time.replace(/\s+/g, " ").trim();
 }
 
-function splitTitleAndSpeaker(text: string): {
-  title: string;
-  speaker: string;
-} {
-  // Common patterns: "Topic   Dr. Name, City" or "Topic   Dr. Name"
+function cleanTitle(title: string): string {
+  // Remove trailing footer text
+  return title
+    .replace(/\s*(Symposium|Specialty|Hall [ABC]).*$/i, "")
+    .replace(/\s*Day-\d.*$/i, "")
+    .trim();
+}
+
+function splitTitleAndSpeaker(text: string): { title: string; speaker: string } {
+  // Look for double-space separator before Dr./Prof./Delegates
   const drMatch = text.match(
-    /^(.+?)\s{2,}((?:Dr\.|Prof\.|Delegates|Panel|Judges).*)$/
+    /^(.+?)\s{2,}((?:Dr\.|Prof\.|Delegates|Panel|Judges|All\s).*)$/
   );
   if (drMatch) {
     return { title: drMatch[1].trim(), speaker: drMatch[2].trim() };
   }
 
-  // If no clear separator, check for "Dr." anywhere
+  // Check for "Dr." with enough preceding text
   const drIdx = text.lastIndexOf("Dr.");
-  if (drIdx > 20) {
+  if (drIdx > 15) {
     return {
-      title: text.substring(0, drIdx).trim(),
+      title: text.substring(0, drIdx).trim().replace(/\s+$/, ""),
       speaker: text.substring(drIdx).trim(),
     };
   }
@@ -187,7 +165,7 @@ function splitTitleAndSpeaker(text: string): {
   return { title: text.trim(), speaker: "" };
 }
 
-function detectSessionType(title: string, fullLine: string): string {
+function detectSessionType(title: string): string {
   const lower = title.toLowerCase();
   if (lower.includes("workshop")) return "workshop";
   if (lower.includes("oration")) return "oration";
