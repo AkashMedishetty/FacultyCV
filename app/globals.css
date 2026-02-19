@@ -3,25 +3,38 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-primary: #8fb1e7;
+  --color-primary-light: #b8d4f5;
+  --color-primary-lighter: #e3eef9;
+  --color-secondary: #00224d;
+  --color-accent: #b99b64;
+  --color-accent-light: #d4c4a8;
+  --color-surface: #f0f4f8;
+  --color-surface-raised: #ffffff;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--color-surface);
+  color: var(--color-secondary);
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+@layer components {
+  .neu-card {
+    @apply bg-surface-raised rounded-neu shadow-neu-raised;
+  }
+  .neu-card-sm {
+    @apply bg-surface-raised rounded-neu-sm shadow-neu-raised-sm;
+  }
+  .neu-pressed {
+    @apply bg-surface rounded-neu-sm shadow-neu-pressed;
+  }
+  .neu-button {
+    @apply bg-surface-raised rounded-neu-sm shadow-neu-button 
+           hover:shadow-neu-button-hover active:shadow-neu-pressed
+           transition-all duration-200 cursor-pointer;
+  }
+  .brand-gradient {
+    background: linear-gradient(135deg, var(--color-primary-lighter) 0%, var(--color-surface) 50%, var(--color-accent-light) 100%);
   }
 }
